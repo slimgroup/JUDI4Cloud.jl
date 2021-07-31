@@ -4,10 +4,10 @@
 # Date: January 2017
 #
 
-using JUDI, SegyIO, LinearAlgebra
-using JUDI4Azure
+using JUDI4Azure, SegyIO, LinearAlgebra
 
-Init_culster(nworkers=2, creds="/home/mloubout/research/azure/clusterless_creds.json"; vm_size="Standard_E2s_v3", verbose=1)
+creds = "/home/mloubout/research/azure/clusterless_creds.json"
+init_culster(nworkers=2, creds=creds; vm_size="Standard_E2s_v3", verbose=1)
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
