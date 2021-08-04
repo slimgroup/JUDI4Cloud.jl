@@ -7,7 +7,7 @@
 using JUDI4Azure, SegyIO, LinearAlgebra
 
 creds = "/home/mloubout/research/azure/clusterless_creds.json"
-init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest2", verbose=1)
+init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest", verbose=1)
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
@@ -83,6 +83,7 @@ qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 # Linearized modeling
 dD = J*dm
 # Adjoint jacobian
+rtm = time_modeling(model::Model, q.geometry, q.data, dD.geometry, dD.data, nothing, 1:2, 'J', -1, opt)
 rtm = adjoint(J)*dD
 
 # # evaluate FWI objective function
