@@ -21,7 +21,14 @@ _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_NODE_OS_SKU"            => "20-04-lts")
 
 
-function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3", pool_name="JudiPool", verbose=0, kw...)
+function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3", pool_name="JudiPool2", verbose=0, kw...)
+    # Update verbosity and parameters
+    @eval(AzureClusterlessHPC, global __verbose__ =  Bool($verbose))
+    global AzureClusterlessHPC.__params__["_NODE_COUNT_PER_POOL"] = "$(nworkers)"
+    global AzureClusterlessHPC.__params__["_POOL_ID"] = "$(pool_name)"
+    global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = "$(vm_size)"
+    global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
+
     if !isnothing(credentials)
         # reinit everything
         isfile(credentials) || throw(FileNotFoundError(credentials))
@@ -31,10 +38,6 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
         @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
     end
 
-    @eval(AzureClusterlessHPC, global __verbose__ =  Bool($verbose))
-    global AzureClusterlessHPC.__params__["_NODE_COUNT_PER_POOL"] = "$(nworkers)"
-    global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = "$(vm_size)"
-    global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
     create_pool()
     # Export JUDI on azure
     eval(macroexpand(JUDI4Azure, quote @batchdef using JUDI end))
