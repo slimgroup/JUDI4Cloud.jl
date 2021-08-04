@@ -1,10 +1,10 @@
 # Example for basic 2D modeling:
 # The receiver positions and the source wavelets are the same for each of the four experiments.
-# Author: Philipp Witte, pwitte@eos.ubc.ca
-# Date: January 2017
+# Author: MAthias Loubout, mlouboutin3@gatech.edu
+# Date: August 2021
 #
 
-using JUDI4Azure, SegyIO, LinearAlgebra
+using JUDI4Azure
 
 creds = "/home/mloubout/research/azure/clusterless_creds.json"
 init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest", verbose=1)
