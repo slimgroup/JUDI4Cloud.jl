@@ -7,7 +7,7 @@
 using JUDI4Azure, SegyIO, LinearAlgebra
 
 creds = "/home/mloubout/research/azure/clusterless_creds.json"
-init_culster(nworkers=2, creds=creds; vm_size="Standard_E2s_v3", verbose=1)
+init_culsterless(nworkers=2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest2", verbose=1)
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
@@ -66,7 +66,7 @@ info = Info(prod(n), nsrc, ntComp)
 ###################################################################################################
 
 # Write shots as segy files to disk
-opt = Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
+opt = JUDI.Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
 
 # Setup operators
 Pr = judiProjection(info, recGeometry)
@@ -85,16 +85,16 @@ dD = J*dm
 # Adjoint jacobian
 rtm = adjoint(J)*dD
 
-# evaluate FWI objective function
-f, g = fwi_objective(model0, q, dobs; options=opt)
+# # evaluate FWI objective function
+# f, g = fwi_objective(model0, q, dobs; options=opt)
 
-# evaluate LSRTM objective function
-fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
-fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
+# # evaluate LSRTM objective function
+# fj, gj = lsrtm_objective(model0, q, dD, dm; options=opt)
+# fjn, gjn = lsrtm_objective(model0, q, dobs, dm; nlind=true, options=opt)
 
-# By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
-# And with computing of the residual. Small noise can be seen in the difference
-# due to floating point roundoff errors with openMP, but running with 
-# OMP_NUM_THREAS=1 (no parllelism) produces the exact (difference == 0) same result
-# gjn2 == g
-fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
+# # By extension, lsrtm_objective is the same as fwi_objecive when `dm` is zero
+# # And with computing of the residual. Small noise can be seen in the difference
+# # due to floating point roundoff errors with openMP, but running with 
+# # OMP_NUM_THREAS=1 (no parllelism) produces the exact (difference == 0) same result
+# # gjn2 == g
+# fjn2, gjn2 = lsrtm_objective(model0, q, dobs, 0f0.*dm; nlind=true, options=opt)
