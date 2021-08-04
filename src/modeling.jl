@@ -24,7 +24,7 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
 end
 
 # FWI
-function fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
+function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
     # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
     # Broadcast common parameters
     _model = @bcast model
