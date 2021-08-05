@@ -4,7 +4,7 @@
 # Date: August 2021
 #
 
-using JUDI4Azure
+using JUDI4Cloud
 
 creds = "/home/mloubout/research/azure/clusterless_creds.json"
 init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest", verbose=1)

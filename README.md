@@ -1,14 +1,14 @@
-# JUDI4Azure.jl
+# JUDI4Cloud.jl
 
 This packages implements serverless parallelism on Azure (Azure batch) for JUDI using [AzureClusterlessHPC](https://github.com/microsoft/AzureClusterlessHPC.jl). 
 
-Using this package overwrite the task parallelism in [JUDI](https://github.com/slimgroup/JUDI.jl) and will therefore throw the corresponding warnings. These warnings can be safely ignored, however, `JUDI` and `JUDI4Azure` should not be used together. The current implementation doesn't allow to switch between azure and conventional parallelism, it is left to the user to know which resources they will use.
+Using this package overwrite the task parallelism in [JUDI](https://github.com/slimgroup/JUDI.jl) and will therefore throw the corresponding warnings. These warnings can be safely ignored, however, `JUDI` and `JUDI4Cloud` should not be used together. The current implementation doesn't allow to switch between azure and conventional parallelism, it is left to the user to know which resources they will use.
 
 ## Usage
 
-To use this package, simply replace `using JUDI` by `using JUDI4Azure` at the top of your script. All JUDI functionnalities are reexported to make your script compatible.
+To use this package, simply replace `using JUDI` by `using JUDI4Cloud` at the top of your script. All JUDI functionnalities are reexported to make your script compatible.
 
-Once `JUDI4Azure` imported, you can use its main functionnality to start an Azure batch pool to use as your serverless remote taks farm. To start a batch pool with `2` nodes and `4` threads per node run:
+Once `JUDI4Cloud` imported, you can use its main functionnality to start an Azure batch pool to use as your serverless remote taks farm. To start a batch pool with `2` nodes and `4` threads per node run:
 
 ```julia
 nworkers = 2
@@ -24,7 +24,7 @@ where:
 
 ## Examples
 
-A simple example is available at [examples/modeling_basic_2D.jl](https://github.gatech.edu/mlouboutin3/JUDI4Azure.jl/blob/master/examples/modeling_basic_2D.jl). This example si the verbatim copy of the corresponding JUDI example, with the exception of the Azure setup at the top, and shows the seemless usxability of this package.
+A simple example is available at [examples/modeling_basic_2D.jl](https://github.gatech.edu/mlouboutin3/JUDI4Cloud.jl/blob/master/examples/modeling_basic_2D.jl). This example si the verbatim copy of the corresponding JUDI example, with the exception of the Azure setup at the top, and shows the seemless usxability of this package.
 
 ## Future work
 
