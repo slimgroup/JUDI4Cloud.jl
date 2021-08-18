@@ -1,6 +1,6 @@
 # JUDI4Cloud.jl
 
-This packages implements serverless parallelism on Azure (Azure batch) for JUDI using [AzureClusterlessHPC](https://github.com/microsoft/AzureClusterlessHPC.jl). 
+This package implements serverless parallelism on Azure (Azure batch) for JUDI using [AzureClusterlessHPC](https://github.com/microsoft/AzureClusterlessHPC.jl). 
 
 Using this package overwrite the task parallelism in [JUDI](https://github.com/slimgroup/JUDI.jl) and will therefore throw the corresponding warnings. These warnings can be safely ignored, however, `JUDI` and `JUDI4Cloud` should not be used together. The current implementation doesn't allow to switch between azure and conventional parallelism, it is left to the user to know which resources they will use.
 
