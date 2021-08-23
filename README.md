@@ -4,6 +4,17 @@ This package implements serverless parallelism on Azure (Azure batch) for JUDI u
 
 Using this package overwrite the task parallelism in [JUDI](https://github.com/slimgroup/JUDI.jl) and will therefore throw the corresponding warnings. These warnings can be safely ignored, however, `JUDI` and `JUDI4Cloud` should not be used together. The current implementation doesn't allow to switch between azure and conventional parallelism, it is left to the user to know which resources they will use.
 
+## Installation
+
+To install this package simply run the standard command
+
+```julia
+] add https://github.com/slimgroup/JUDI4Cloud.jl
+```
+
+***Note*** The default docker container used is based on `julia v1.6`. Since the communcation with Azure Blob is done through Serialization, it is highly recommended to use the same version of julia locally. If you use the default container, use `Julia v1.6`, and if you use you own container make sure to have compatible Julia versions.
+
+
 ## Usage
 
 To use this package, simply replace `using JUDI` by `using JUDI4Cloud` at the top of your script. All JUDI functionnalities are reexported to make your script compatible.

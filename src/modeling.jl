@@ -24,7 +24,7 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
 end
 
 # FWI
-function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=Options())
+function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; options=JUDI.Options())
     # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
     # Broadcast common parameters
     _model = @bcast model
@@ -39,7 +39,7 @@ end
 
 # lsrtm
 
-function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm; options=Options(), nlind=false)
+function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector, dm; options=JUDI.Options(), nlind=false)
     # lsrtm_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
 
     # Broadcast common parameters

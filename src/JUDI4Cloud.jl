@@ -21,16 +21,41 @@ _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_OMP_NUM_THREADS"        => "4",
                     "_NODE_OS_SKU"            => "20-04-lts")
 
+"""
+Define auto scale formula to avoid idle pools
+"""
+auto_scale_formula(x) = """// Get pending tasks for the past 15 minutes.
+\$samples = \$ActiveTasks.GetSamplePercent(TimeInterval_Minute * 15);
+// If we have fewer than 70 percent data points, we use the last sample point, otherwise we use the maximum of last sample point and the history average.
+\$tasks = \$samples < 70 ? max(0, \$ActiveTasks.GetSample(1)) : 
+max( \$ActiveTasks.GetSample(1), avg(\$ActiveTasks.GetSample(TimeInterval_Minute * 15)));
+// If number of pending tasks is not 0, set targetVM to pending tasks, otherwise 25% of current dedicated.
+\$targetVMs = \$tasks > 0 ? \$tasks : max(0, \$TargetDedicatedNodes / 4);
+// The pool size is capped at NWORKERS, if target VM value is more than that, set it to NWORKERS.
+cappedPoolSize = $x;
+\$TargetDedicatedNodes = max(0, min(\$targetVMs, cappedPoolSize));
+// Set node deallocation mode - keep nodes active only until tasks finish
+\$NodeDeallocationOption = taskcompletion;"""
+
+
+len_vm(s::String) = 1
+len_vm(s::Array{String, 1}) = len(s)
+len_vm(s) = @throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
 
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
-                                      pool_name="JudiPool", verbose=0, nthreads=4, kw...)
+                                      pool_name="JudiPool", verbose=0, nthreads=4,
+                                      auto_scale=true, kw...)
+    # Check input
+    npool = len_vm(vm_size)
     # Update verbosity and parameters
     @eval(AzureClusterlessHPC, global __verbose__ =  Bool($verbose))
     global AzureClusterlessHPC.__params__["_NODE_COUNT_PER_POOL"] = "$(nworkers)"
     global AzureClusterlessHPC.__params__["_POOL_ID"] = "$(pool_name)"
-    global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = "$(vm_size)"
+    global AzureClusterlessHPC.__params__["_POOL_COUNT"] = "$(npool)"
+    global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = vm_size
     global AzureClusterlessHPC.__params__["_OMP_NUM_THREADS"] = "$(nthreads)"
     global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
+    
 
     if !isnothing(credentials)
         # reinit everything
@@ -41,7 +66,10 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
         @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
     end
 
-    create_pool()
+    # Create pool with idle autoscale. This will be much more efficient with a defined image rather than docker.
+    create_pool(;enable_auto_scale=auto_scale, auto_scale_formula=auto_scale_formula(nworkers), 
+                auto_scale_evaluation_interval_minutes=5)
+
     # Export JUDI on azure
     eval(macroexpand(JUDI4Cloud, quote @batchdef using Distributed, JUDI end))
     include(joinpath(@__DIR__, "batch_defs.jl"))
