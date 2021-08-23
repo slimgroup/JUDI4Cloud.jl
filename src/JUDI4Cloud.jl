@@ -40,7 +40,7 @@ cappedPoolSize = $x;
 
 len_vm(s::String) = 1
 len_vm(s::Array{String, 1}) = len(s)
-len_vm(s) = @throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
+len_vm(s) = throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
 
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
                                       pool_name="JudiPool", verbose=0, nthreads=4,
@@ -55,7 +55,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = vm_size
     global AzureClusterlessHPC.__params__["_OMP_NUM_THREADS"] = "$(nthreads)"
     global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
-    
+
 
     if !isnothing(credentials)
         # reinit everything
