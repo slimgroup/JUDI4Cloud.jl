@@ -28,7 +28,7 @@ function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; 
     # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
     # Broadcast common parameters
     _model = @bcast model
-    results = @batchexec pmap(j -> fwi_objective_azure(model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc)
+    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc)
     
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
@@ -45,7 +45,7 @@ function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector
     # Broadcast common parameters
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
-    results = @batchexec pmap(j -> lsrtm_objective_azure(model, source[j], dObs[j], dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc)
+    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc)
 
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
