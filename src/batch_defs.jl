@@ -18,7 +18,7 @@ end
 @batchdef function lsrtm_objective_azure(_model, q, D, _dm, opt; nlind=false)
     model = fetch(_model)
     dm = isnothing(_dm) ? _dm : fetch(_dm)
-    argout = lsrtm_objective(model,q, D, opt; nlind=nlind)
+    argout = lsrtm_objective(model,q, D, dm; options=opt, nlind=nlind)
     return argout
 end
 
