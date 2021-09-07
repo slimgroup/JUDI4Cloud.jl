@@ -8,10 +8,11 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
     # Broadcast common parameters
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
+    opts = make_opt([model, dm, op, srcGeometry])
     # Run on azure
     results = @batchexec pmap(sx -> time_modeling_azure(_model, subsample(srcGeometry,sx), subsample(srcData, sx),
                                                         subsample(recGeometry, sx), subsample(recData, sx), _dm,
-                                                        op, mode, subsample(options, sx)), srcnum)
+                                                        op, mode, subsample(options, sx)), srcnum) opts
     # Gather results
     if op=='F' || (op=='J' && mode==1)
         argout1 = vcat(fetch(results)...)
@@ -28,7 +29,8 @@ function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; 
     # fwi_objective function for multiple sources. The function distributes the sources and the input data amongst the available workers.
     # Broadcast common parameters
     _model = @bcast model
-    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc)
+    opts = make_opt([model, dObs, source])
+    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc) opts
     
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
@@ -45,11 +47,15 @@ function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector
     # Broadcast common parameters
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
-    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc)
-
+    opts = make_opt([model, dObs, source, dm])
+    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc) opts
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
 
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
+
+
+# Make options for unique batch ids
+make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))")

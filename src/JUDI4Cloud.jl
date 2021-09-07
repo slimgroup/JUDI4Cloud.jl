@@ -47,6 +47,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
                                       auto_scale=true, kw...)
     # Check input
     npool = len_vm(vm_size)
+    blob_name = lowercase("$(pool_name)tmp")
     # Update verbosity and parameters
     @eval(AzureClusterlessHPC, global __verbose__ =  Bool($verbose))
     global AzureClusterlessHPC.__params__["_NODE_COUNT_PER_POOL"] = "$(nworkers)"
@@ -55,17 +56,17 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global AzureClusterlessHPC.__params__["_POOL_VM_SIZE"] = vm_size
     global AzureClusterlessHPC.__params__["_OMP_NUM_THREADS"] = "$(nthreads)"
     global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
-
+    global AzureClusterlessHPC.__params__["_BLOB_CONTAINER"] = blob_name
 
     if !isnothing(credentials)
         # reinit everything
         isfile(credentials) || throw(FileNotFoundError(credentials))
         creds = AzureClusterlessHPC.JSON.parsefile(credentials)
+        @eval(AzureClusterlessHPC, global __container__ = $blob_name)
         @eval(AzureClusterlessHPC, global __credentials__ = [$creds])
         @eval(AzureClusterlessHPC, global __resources__ = [[] for i=1:length(__credentials__)])
         @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
     end
-
     # Create pool with idle autoscale. This will be much more efficient with a defined image rather than docker.
     create_pool(;enable_auto_scale=auto_scale, auto_scale_formula=auto_scale_formula(nworkers), 
                 auto_scale_evaluation_interval_minutes=5)
@@ -73,6 +74,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     # Export JUDI on azure
     eval(macroexpand(JUDI4Cloud, quote @batchdef using Distributed, JUDI end))
     include(joinpath(@__DIR__, "batch_defs.jl"))
+    include(joinpath(@__DIR__, "modeling.jl"))
 end
 
 """
@@ -91,8 +93,5 @@ function __init__()
     merge!(AzureClusterlessHPC.__params__, _judi_defaults)
     atexit(finalize_culsterless)
 end
-
-# Modeling functions
-include("modeling.jl")
 
 end # module
