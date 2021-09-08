@@ -7,6 +7,8 @@ using AzureClusterlessHPC, Reexport, Dates
 
 export init_culsterless
 
+_njpi = 1
+
 _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_POOL_VM_SIZE"           => "Standard_E8s_v3",
                     "_VERBOSE"                => "0",
@@ -24,7 +26,9 @@ _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
 """
 Define auto scale formula to avoid idle pools
 """
-auto_scale_formula(x) = """// Get pending tasks for the past 15 minutes.
+auto_scale_formula(x) = """
+\$TargetDedicatedNodes = $x
+// Get pending tasks for the past 15 minutes.
 \$samples = \$ActiveTasks.GetSamplePercent(TimeInterval_Minute * 15);
 // If we have fewer than 70 percent data points, we use the last sample point, otherwise we use the maximum of last sample point and the history average.
 \$tasks = \$samples < 70 ? max(0, \$ActiveTasks.GetSample(1)) : 
@@ -33,9 +37,8 @@ max( \$ActiveTasks.GetSample(1), avg(\$ActiveTasks.GetSample(TimeInterval_Minute
 \$targetVMs = \$tasks > 0 ? \$tasks : max(0, \$TargetDedicatedNodes / 4);
 // The pool size is capped at NWORKERS, if target VM value is more than that, set it to NWORKERS.
 cappedPoolSize = $x;
-\$TargetDedicatedNodes = max(0, min(\$targetVMs, cappedPoolSize));
-// Set node deallocation mode - keep nodes active only until tasks finish
-\$NodeDeallocationOption = taskcompletion;"""
+// Always start the pool at full size and keep it there for 10 minutes
+\$TargetDedicatedNodes = max(0, min(\$targetVMs, cappedPoolSize));"""
 
 
 len_vm(s::String) = 1
@@ -44,7 +47,7 @@ len_vm(s) = throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
 
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
                                       pool_name="JudiPool", verbose=0, nthreads=4,
-                                      auto_scale=true, kw...)
+                                      auto_scale=true, n_julia_per_instance=1, kw...)
     # Check input
     npool = len_vm(vm_size)
     blob_name = lowercase("$(pool_name)tmp")
@@ -77,6 +80,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
 
     # Export JUDI on azure
     eval(macroexpand(JUDI4Cloud, quote @batchdef using Distributed, JUDI end))
+    global _njpi = isnothing(n_julia_per_instance) ? 1 : n_julia_per_instance
     include(joinpath(@__DIR__, "batch_defs.jl"))
     include(joinpath(@__DIR__, "modeling.jl"))
 end

@@ -9,10 +9,11 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
     opts = make_opt([model, dm, op, srcGeometry])
+    iter = make_parts(srcnum)
     # Run on azure
-    results = @batchexec pmap(sx -> time_modeling_azure(_model, subsample(srcGeometry,sx), subsample(srcData, sx),
+    results = @batchexec pmap(sx -> time_modeling_azure(_model, subsample(srcGeometry, sx), subsample(srcData, sx),
                                                         subsample(recGeometry, sx), subsample(recData, sx), _dm,
-                                                        op, mode, subsample(options, sx)), srcnum) opts
+                                                        op, mode, subsample(options, sx)), iter) opts
     # Gather results
     if op=='F' || (op=='J' && mode==1)
         argout1 = vcat(fetch(results)...)
@@ -30,7 +31,8 @@ function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; 
     # Broadcast common parameters
     _model = @bcast model
     opts = make_opt([model, dObs, source])
-    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc) opts
+    iter = make_parts(1:dObs.nsrc)
+    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), iter) opts
     
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
@@ -48,7 +50,8 @@ function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
     opts = make_opt([model, dObs, source, dm])
-    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc) opts
+    iter = make_parts(1:dObs.nsrc)
+    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), iter) opts
     # Collect and reduce gradients
     obj, gradient = fetchreduce(results; op=+)
 
@@ -58,4 +61,9 @@ end
 
 
 # Make options for unique batch ids
-make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))", job_name=string(now()))
+make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))")
+
+# Batchexec function 
+slicec(i::Integer, j::Integer) = i==j ? i : (i:j)
+chunk(arr, n) = [arr[slicec(i, min(i + n - 1, length(arr)))] for i in 1:n:length(arr)]
+make_parts(iter) = _njpi > 1 ? chunk(iter, _njpi) : iter
