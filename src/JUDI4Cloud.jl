@@ -1,6 +1,6 @@
 module JUDI4Cloud
 
-import Base.vcat, Base.+
+import Base.+
 
 using AzureClusterlessHPC, Reexport, Dates
 @reexport using JUDI
@@ -14,7 +14,7 @@ _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_VERBOSE"                => "0",
                     "_NODE_OS_OFFER"          => "ubuntu-server-container",
                     "_NODE_OS_PUBLISHER"      => "microsoft-azure-batch",
-                    "_CONTAINER"              => "mloubout/judi-cpu:1.0",
+                    "_CONTAINER"              => "mloubout/judi-cpu:1.4",
                     "_NODE_COUNT_PER_POOL"    => "4",
                     "_NUM_RETRYS"             => "1",
                     "_POOL_COUNT"             => "1",
@@ -46,8 +46,9 @@ len_vm(s::Array{String, 1}) = len(s)
 len_vm(s) = throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
 
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
-                                      pool_name="JudiPool", verbose=0, nthreads=4,
-                                      auto_scale=true, n_julia_per_instance=1, kw...)
+                          pool_name="JudiPool", verbose=0, nthreads=4,
+                          auto_scale=true, n_julia_per_instance=1, kw...)
+    isnothing(credentials) && throw(InputError("`credentials` must be a valid path to Azure json Credentials"))
     # Check input
     npool = len_vm(vm_size)
     blob_name = lowercase("$(pool_name)tmp")
@@ -61,26 +62,28 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
     global AzureClusterlessHPC.__params__["_BLOB_CONTAINER"] = blob_name
 
-    if !isnothing(credentials)
-        # reinit everything
-        isfile(credentials) || throw(FileNotFoundError(credentials))
-        creds = AzureClusterlessHPC.JSON.parsefile(credentials)
-        @eval(AzureClusterlessHPC, global __container__ = $blob_name)
-        @eval(AzureClusterlessHPC, global __credentials__ = [$creds])
-        @eval(AzureClusterlessHPC, global __resources__ = [[] for i=1:length(__credentials__)])
-        @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
-    end
+    # reinit everything
+    isfile(credentials) || throw(FileNotFoundError(credentials))
+    creds = AzureClusterlessHPC.JSON.parsefile(credentials)
+    @eval(AzureClusterlessHPC, global __container__ = $blob_name)
+    @eval(AzureClusterlessHPC, global __credentials__ = [$creds])
+    @eval(AzureClusterlessHPC, global __resources__ = [[] for i=1:length(__credentials__)])
+    @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
+
     # Create pool with idle autoscale. This will be much more efficient with a defined image rather than docker.
     if auto_scale
-        create_pool(;enable_auto_scale=auto_scale, auto_scale_formula=auto_scale_formula(nworkers), 
-                auto_scale_evaluation_interval_minutes=5)
+        create_pool(;enable_auto_scale=auto_scale,
+                    auto_scale_formula=auto_scale_formula(nworkers), 
+                    auto_scale_evaluation_interval_minutes=5)
     else
-        create_pool(;enable_auto_scale=auto_scale)
+        create_pool()
     end
 
     # Export JUDI on azure
     eval(macroexpand(JUDI4Cloud, quote @batchdef using Distributed, JUDI end))
     global _njpi = isnothing(n_julia_per_instance) ? 1 : n_julia_per_instance
+    # Define number of local julia worker on each node in batch
+    eval(macroexpand(JUDI4Cloud, quote @batchdef _nproc_loc = $_njpi end))
     include(joinpath(@__DIR__, "batch_defs.jl"))
     include(joinpath(@__DIR__, "modeling.jl"))
 end

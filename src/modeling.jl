@@ -1,8 +1,4 @@
 
-sum(A::Array{BlobFuture}) = fetchreduce(A; op=+, remote=true, num_restart=0)
-vcat(A::NTuple{N, BlobFuture}) where N = vcat(fetch(collect(A))...)
-reduce(f, A::Array{BlobFuture}) = fetchreduce(A; op=+, remote=true, num_restart=0)
-
 function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData, dm, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
 
     # Broadcast common parameters
@@ -18,7 +14,7 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
     if op=='F' || (op=='J' && mode==1)
         argout1 = vcat(fetch(results)...)
     elseif op=='J' && mode==-1
-        argout1 = fetchreduce(results; op=+, remote=false)
+        argout1 = fetchreduce(results; op=+, remote=true)
     else
         error("operation no defined")
     end
@@ -35,8 +31,7 @@ function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; 
     results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), iter) opts
     
     # Collect and reduce gradients
-    obj, gradient = fetchreduce(results; op=+)
-
+    obj, gradient = fetchreduce(results; op=+, remote=true)
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
@@ -53,8 +48,7 @@ function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector
     iter = make_parts(1:dObs.nsrc)
     results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), iter) opts
     # Collect and reduce gradients
-    obj, gradient = fetchreduce(results; op=+)
-
+    obj, gradient = fetchreduce(results; op=+, remote=true)
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
