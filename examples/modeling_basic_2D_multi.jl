@@ -4,10 +4,16 @@
 # Date: August 2021
 #
 
+### In this example we start a small batch pool with 2 worker but put two julia
+### worker per batch node. This leads to a total of 4 juia worker on two nodes
+### Because we only have three sources, it will only start a julia distributed environment
+### on one of the node as it checks whether julia distributed is needed at runtime.
+
 using JUDI4Cloud
 
-creds = "/home/mloubout/research/azure/clusterless_creds.json"
-# creds = "/Users/mathiaslouboutin/research/AzureSlim/custerless/credentials.json"
+# creds = "/home/mloubout/research/azure/clusterless_creds.json"
+batch_clear()
+creds = "/Users/mathiaslouboutin/research/AzureSlim/custerless/credentials.json"
 init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", auto_scale=false,
                  pool_name="BatchBatch", n_julia_per_instance=2, verbose=1)
 # Set up model structure
@@ -80,12 +86,12 @@ J = judiJacobian(Pr*F0*adjoint(Ps), q)
 # Nonlinear modeling
 dobs = Pr*F*adjoint(Ps)*q
 # # Adjoint
-# qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+qad = Ps*adjoint(F)*adjoint(Pr)*dobs
 
 # Linearized modeling
-# dD = J*dm
+dD = J*dm
 # Adjoint jacobian
-rtm = adjoint(J)*dobs
+rtm = adjoint(J)*dD
 
 # # evaluate FWI objective function
 f, g = fwi_objective(model0, q, dobs; options=opt)

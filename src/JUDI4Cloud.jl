@@ -14,7 +14,7 @@ _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_VERBOSE"                => "0",
                     "_NODE_OS_OFFER"          => "ubuntu-server-container",
                     "_NODE_OS_PUBLISHER"      => "microsoft-azure-batch",
-                    "_CONTAINER"              => "mloubout/judi-cpu:1.4",
+                    "_CONTAINER"              => "mloubout/judi-cpu:1.4.3",
                     "_NODE_COUNT_PER_POOL"    => "4",
                     "_NUM_RETRYS"             => "1",
                     "_POOL_COUNT"             => "1",
@@ -45,6 +45,24 @@ len_vm(s::String) = 1
 len_vm(s::Array{String, 1}) = len(s)
 len_vm(s) = throw(ArgumentError("`vm_size` must be a String Array{String, 1}"))
 
+
+"""
+    init_culsterless(nworkers; kw...)
+
+Initialze the serverless Azure Batch pool with `nworkers` instances/nodes
+
+Parameters
+* `nworkers`: Number of instances ine the Azure batch pool.
+* `credentials`: Path to credentials file. See AzureClusterlessHPC for more details.
+
+* `pool_name`: Name of the pool
+* `vm_size`: Type of virtual machine (vm) to use for the pool. You can provide a list of vm sizes in which case it will creeate one pool per type of vm.
+Check your azure batch quotas to make sure this is available for you.
+* `verbose`: whether to turn on (1) or of (0) AzureClusterlessHPC verbosity.
+* `nthreads`: Sets `OMP_NUM_THREADS=nthreads` on each node.
+* `auto_scale`: Whether to enable autoscale. If enabled, the pool will start with no node and automatically scale based on the number of tasks.
+* `n_julia_per_instance`: Number of julia worker per node (Default 1). If >1, julia will start a mini distributed setup on each node based on the number of source.
+"""
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
                           pool_name="JudiPool", verbose=0, nthreads=4,
                           auto_scale=true, n_julia_per_instance=1, kw...)
