@@ -5,7 +5,7 @@ import Base.vcat, Base.+
 using AzureClusterlessHPC, Reexport
 @reexport using JUDI
 
-export init_culsterless
+export init_culsterless, finalize_culsterless
 
 _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_POOL_VM_SIZE"           => "Standard_E8s_v3",
