@@ -8,13 +8,14 @@ using AzureClusterlessHPC, Reexport, Dates
 export init_culsterless
 
 _njpi = 1
+_default_container = "mloubout/judi-cpu:1.4.3"
 
 _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_POOL_VM_SIZE"           => "Standard_E8s_v3",
                     "_VERBOSE"                => "0",
                     "_NODE_OS_OFFER"          => "ubuntu-server-container",
                     "_NODE_OS_PUBLISHER"      => "microsoft-azure-batch",
-                    "_CONTAINER"              => "mloubout/judi-cpu:1.4.3",
+                    "_CONTAINER"              => _default_container,
                     "_NODE_COUNT_PER_POOL"    => "4",
                     "_NUM_RETRYS"             => "1",
                     "_POOL_COUNT"             => "1",
@@ -65,7 +66,8 @@ Check your azure batch quotas to make sure this is available for you.
 """
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
                           pool_name="JudiPool", verbose=0, nthreads=4,
-                          auto_scale=true, n_julia_per_instance=1, kw...)
+                          auto_scale=true, n_julia_per_instance=1,
+                          container=_default_container, kw...)
     isnothing(credentials) && throw(InputError("`credentials` must be a valid path to Azure json Credentials"))
     # Check input
     npool = len_vm(vm_size)
@@ -79,7 +81,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global AzureClusterlessHPC.__params__["_OMP_NUM_THREADS"] = "$(nthreads)"
     global AzureClusterlessHPC.__params__["_VERBOSE"] = "$(verbose)"
     global AzureClusterlessHPC.__params__["_BLOB_CONTAINER"] = blob_name
-
+    global AzureClusterlessHPC.__params__["_CONTAINER"] = container
     # reinit everything
     isfile(credentials) || throw(FileNotFoundError(credentials))
     creds = AzureClusterlessHPC.JSON.parsefile(credentials)
