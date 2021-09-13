@@ -68,8 +68,12 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
         @eval(AzureClusterlessHPC, global __clients__ = create_clients(__credentials__, batch=true, blob=true))
     end
     # Create pool with idle autoscale. This will be much more efficient with a defined image rather than docker.
-    create_pool(;enable_auto_scale=auto_scale, auto_scale_formula=auto_scale_formula(nworkers), 
+    if auto_scale
+        create_pool(;enable_auto_scale=auto_scale, auto_scale_formula=auto_scale_formula(nworkers), 
                 auto_scale_evaluation_interval_minutes=5)
+    else
+        create_pool(;enable_auto_scale=auto_scale)
+    end
 
     # Export JUDI on azure
     eval(macroexpand(JUDI4Cloud, quote @batchdef using Distributed, JUDI end))
