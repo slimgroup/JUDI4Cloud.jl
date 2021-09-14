@@ -58,4 +58,4 @@ end
 
 
 # Make options for unique batch ids
-make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))")
+make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))", job_name=string(now()))
