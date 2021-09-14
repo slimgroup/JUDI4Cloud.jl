@@ -1,3 +1,5 @@
+fetchvcat(J::judiVector) = J
+fetchvcat(x) = vcat(x...)
 
 function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData, dm, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
 
@@ -12,7 +14,10 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
                                                         op, mode, subsample(options, sx)), iter) opts
     # Gather results
     if op=='F' || (op=='J' && mode==1)
-        argout1 = vcat(fetch(results)...)
+        temp = fetch(results)
+        println(typeof(temp))
+        argout1 = fetchvcat(temp)
+        println(typeof(argout1))
     elseif op=='J' && mode==-1
         argout1 = fetchreduce(results; op=+, remote=true)
     else
