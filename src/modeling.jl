@@ -1,7 +1,5 @@
-
-sum(A::Array{BlobFuture}) = fetchreduce(A; op=+, remote=true, num_restart=0)
-vcat(A::NTuple{N, BlobFuture}) where N = vcat(fetch(collect(A))...)
-reduce(f, A::Array{BlobFuture}) = fetchreduce(A; op=+, remote=true, num_restart=0)
+fetchvcat(J::judiVector) = J
+fetchvcat(x) = vcat(x...)
 
 function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, recData, dm, srcnum::UnitRange{Int64}, op::Char, mode::Int64, options)
 
@@ -9,15 +7,19 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
     opts = make_opt([model, dm, op, srcGeometry])
+    iter = make_parts(srcnum)
     # Run on azure
-    results = @batchexec pmap(sx -> time_modeling_azure(_model, subsample(srcGeometry,sx), subsample(srcData, sx),
+    results = @batchexec pmap(sx -> time_modeling_azure(_model, subsample(srcGeometry, sx), subsample(srcData, sx),
                                                         subsample(recGeometry, sx), subsample(recData, sx), _dm,
-                                                        op, mode, subsample(options, sx)), srcnum) opts
+                                                        op, mode, subsample(options, sx)), iter) opts
     # Gather results
     if op=='F' || (op=='J' && mode==1)
-        argout1 = vcat(fetch(results)...)
+        temp = fetch(results)
+        println(typeof(temp))
+        argout1 = fetchvcat(temp)
+        println(typeof(argout1))
     elseif op=='J' && mode==-1
-        argout1 = fetchreduce(results; op=+, remote=false)
+        argout1 = fetchreduce(results; op=+, remote=true)
     else
         error("operation no defined")
     end
@@ -30,11 +32,11 @@ function JUDI.fwi_objective(model::Model, source::judiVector, dObs::judiVector; 
     # Broadcast common parameters
     _model = @bcast model
     opts = make_opt([model, dObs, source])
-    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), 1:dObs.nsrc) opts
+    iter = make_parts(1:dObs.nsrc)
+    results = @batchexec pmap(j -> fwi_objective_azure(_model, source[j], dObs[j], subsample(options, j)), iter) opts
     
     # Collect and reduce gradients
-    obj, gradient = fetchreduce(results; op=+)
-
+    obj, gradient = fetchreduce(results; op=+, remote=true)
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
@@ -48,14 +50,19 @@ function JUDI.lsrtm_objective(model::Model, source::judiVector, dObs::judiVector
     _model = @bcast model
     _dm = isnothing(dm) ? dm : @bcast dm
     opts = make_opt([model, dObs, source, dm])
-    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), 1:dObs.nsrc) opts
+    iter = make_parts(1:dObs.nsrc)
+    results = @batchexec pmap(j -> lsrtm_objective_azure(_model, source[j], dObs[j], _dm, subsample(options, j); nlind=nlind), iter) opts
     # Collect and reduce gradients
-    obj, gradient = fetchreduce(results; op=+)
-
+    obj, gradient = fetchreduce(results; op=+, remote=true)
     # first value corresponds to function value, the rest to the gradient
     return obj, gradient
 end
 
 
 # Make options for unique batch ids
-make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))", job_name=string(now()))
+make_opt(a::Array) = AzureClusterlessHPC.Options(;task_name="task_$(objectid(a))")
+
+# Batchexec function 
+slicec(i::Integer, j::Integer) = i==j ? i : (i:j)
+chunk(arr, n) = [arr[slicec(i, min(i + n - 1, length(arr)))] for i in 1:n:length(arr)]
+make_parts(iter) = _njpi > 1 ? chunk(iter, _njpi) : iter
