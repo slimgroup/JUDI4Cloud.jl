@@ -35,15 +35,15 @@ where:
 
 ## Examples
 
-A simple example is available at [examples/modeling_basic_2D.jl](https://github.com/slimgroup/JUDI4Cloud.jl/blob/master/examples/modeling_basic_2D.jl). This example is a verbatim copy of the corresponding [JUDI](https://github.com/slimgroup/JUDI.jl) example, with the exception of the Azure setup at the top, and shows the seemless usability of this package.
+A simple example is available at [examples/modeling_basic_2D.jl](https://github.com/slimgroup/JUDI4Cloud.jl/blob/master/examples/modeling_basic_2D.jl). This example is a verbatim copy of the corresponding [JUDI](https://github.com/slimgroup/JUDI.jl) example, with the exception of the Azure setup at the top, and shows the seamless usability of this package.
 
 ## Future work
 
-The following extensions are currently in developpement:
+The following extensions are currently in development:
 
 - GPU support. [JUDI](https://github.com/slimgroup/JUDI.jl) support's GPU offloading through [Devito](https://github.com/devitocodes/devito) and VM/Image/container support is beeing added
-- More flexibility allowing to switch between conventional Julia parallelsim and Azure
-- Some functionnalities are not supported yet (Extended source, TWRI), these will be added as well.
+- More flexibility allowing to switch between conventional Julia parallelism and Azure
+- Some functionalities are not supported yet (Extended source, TWRI), these will be added as well.
 
 
 # Author
