@@ -15,9 +15,7 @@ function JUDI.time_modeling(model::Model, srcGeometry, srcData, recGeometry, rec
     # Gather results
     if op=='F' || (op=='J' && mode==1)
         temp = fetch(results)
-        println(typeof(temp))
         argout1 = fetchvcat(temp)
-        println(typeof(argout1))
     elseif op=='J' && mode==-1
         argout1 = fetchreduce(results; op=+, remote=true)
     else
