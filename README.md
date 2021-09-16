@@ -35,7 +35,7 @@ where:
 
 ## Examples
 
-A simple example is available at [examples/modeling_basic_2D.jl](https://github.gatech.edu/mlouboutin3/JUDI4Cloud.jl/blob/master/examples/modeling_basic_2D.jl). This example is a verbatim copy of the corresponding [JUDI](https://github.com/slimgroup/JUDI.jl) example, with the exception of the Azure setup at the top, and shows the seemless usability of this package.
+A simple example is available at [examples/modeling_basic_2D.jl](https://github.com/slimgroup/JUDI4Cloud.jl/blob/master/examples/modeling_basic_2D.jl). This example is a verbatim copy of the corresponding [JUDI](https://github.com/slimgroup/JUDI.jl) example, with the exception of the Azure setup at the top, and shows the seemless usability of this package.
 
 ## Future work
 
