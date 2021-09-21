@@ -83,7 +83,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global AzureClusterlessHPC.__params__["_BLOB_CONTAINER"] = blob_name
     global AzureClusterlessHPC.__params__["_CONTAINER"] = container
     # reinit everything
-    isfile(credentials) || throw(FileNotFoundError(credentials))
+    @assert isfile(credentials)
     creds = AzureClusterlessHPC.JSON.parsefile(credentials)
     @eval(AzureClusterlessHPC, global __container__ = $blob_name)
     @eval(AzureClusterlessHPC, global __credentials__ = [$creds])
