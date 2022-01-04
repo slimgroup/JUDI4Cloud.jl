@@ -106,6 +106,9 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     eval(macroexpand(JUDI4Cloud, quote @batchdef _nproc_loc = $_njpi end))
     include(joinpath(@__DIR__, "batch_defs.jl"))
     include(joinpath(@__DIR__, "modeling.jl"))
+
+    @eval(JUDI, global _worker_pool = azurepool)
+    @eval(JUDI, global _TFuture = BatchController)
 end
 
 """
@@ -124,5 +127,61 @@ function __init__()
     merge!(AzureClusterlessHPC.__params__, _judi_defaults)
     atexit(finalize_culsterless)
 end
+
+struct AzurePool
+    name::String
+end
+azurepool() = AzurePool("Batch Pool $(AzureClusterlessHPC.__params__["_POOL_ID"])")
+
+####### JUDI obverloads ########
+for func in [:time_modeling, fwi_objective, :lsrtm_objective, :extended_source_modeling, :twri_objective]
+    @eval begin
+        @batchdef function $func(_model::BatchFuture, args...; kwargs...)
+            check_njulia(nsrc)
+            model = fetch(_model)
+            argout = $func(model, fetch.(args)...)
+            rmprocs(workers())
+            return argout
+        end
+    end
+end
+
+### julia distributed setup ###
+@batchdef function check_njulia(nsrc::Integer)
+    if _nproc_loc == 1 || nsrc == 1
+        @info "Only $(nsrc) source or $(_nproc_loc) workers, running serial julia"
+        return
+    end
+    nw = nsrc >= _nproc_loc ? _nproc_loc : nsrc
+    @info "Starting julia distributed with $(nw) workers for $(nsrc) sources"
+    addprocs(nw)
+    eval(macroexpand(Main, quote @everywhere using JUDI end))
+end
+
+_process_args(x::Model) = @bcast x
+_process_args(x) = x
+process_args(args) = (_process_args(a) for a ∈ args)
+
+
+function task_distributed(func, pool::AzurePool, args...; kwargs...)
+    nexp = get_nexp(args...)
+    judilog("Running $(func) for $(nexp) experiments")
+    # Allocate results
+    out = Vector{Any}(undef, nexp)
+    # Submit all tasks, asynchronously
+    @sync begin
+        for e ∈ 1:nexp
+            # get current experiment but keep kwargs
+            args_e = get_exp(e, args...)
+            iter, args_e = get_iter(args_e...)
+            # bcast model and such
+            args_e = process_args(args_e)
+            res_e = @batchexec pmap(i -> rfunc([subsample(a, i) for a in args_e]...), iter)
+            @async out[e] = fetchreduce(res_e; op=single_reduce!, remote=true, remotereduction......)
+        end
+    end
+    return filter_exp(out, Val(nexp))
+end
+
 
 end # module
