@@ -8,7 +8,7 @@ using AzureClusterlessHPC, Reexport
 export init_culsterless
 
 _njpi = 1
-_default_container = "mloubout/judi-cpu:1.4.3"
+_default_container = "mloubout/judi-cpu:3.0"
 
 _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_POOL_VM_SIZE"           => "Standard_E8s_v3",
@@ -131,57 +131,33 @@ end
 struct AzurePool
     name::String
 end
+
 azurepool() = AzurePool("Batch Pool $(AzureClusterlessHPC.__params__["_POOL_ID"])")
 
-####### JUDI obverloads ########
-for func in [:time_modeling, fwi_objective, :lsrtm_objective, :extended_source_modeling, :twri_objective]
-    @eval begin
-        @batchdef function $func(_model::BatchFuture, args...; kwargs...)
-            check_njulia(nsrc)
-            model = fetch(_model)
-            argout = $func(model, fetch.(args)...)
-            rmprocs(workers())
-            return argout
-        end
+
+judi_reduction_code = quote
+    @batchdef function remote_reduction(_x, _y; op=+)
+        x = fetch(_x)
+        y = fetch(_y)
+        JUDI.single_reduce!(x, y)
+        return x
     end
 end
 
-### julia distributed setup ###
-@batchdef function check_njulia(nsrc::Integer)
-    if _nproc_loc == 1 || nsrc == 1
-        @info "Only $(nsrc) source or $(_nproc_loc) workers, running serial julia"
-        return
-    end
-    nw = nsrc >= _nproc_loc ? _nproc_loc : nsrc
-    @info "Starting julia distributed with $(nw) workers for $(nsrc) sources"
-    addprocs(nw)
-    eval(macroexpand(Main, quote @everywhere using JUDI end))
+"""
+    run_and_reduce(func, pool, nsrc, arg_func)
+
+Runs the function `func` for indices `1:nsrc` within arguments `func(arg_func(i))`. If the 
+the pool is empty, a standard loop and accumulation is ran. If the pool is a julia WorkerPool or
+any custom Distributed pool, the loop is distributed via `remotecall` followed by are binary tree remote reduction.
+"""
+function run_and_reduce(func, pool::AzurePool, nsrc, arg_func::Function)
+    # Make args indexable so that Redwood doesn't copy everything on every worker
+    args_indexable = (arg_func(i) for i=1:nsrc)
+    res = eval(:(@batchexec pmap(i -> $(func)($(args_indexable[i])), 1:nsrc)))
+
+    res = fetchreduce(res; remote=true, op=single_reduce!)
+    return res
 end
-
-_process_args(x::Model) = @bcast x
-_process_args(x) = x
-process_args(args) = (_process_args(a) for a ∈ args)
-
-
-function task_distributed(func, pool::AzurePool, args...; kwargs...)
-    nexp = get_nexp(args...)
-    judilog("Running $(func) for $(nexp) experiments")
-    # Allocate results
-    out = Vector{Any}(undef, nexp)
-    # Submit all tasks, asynchronously
-    @sync begin
-        for e ∈ 1:nexp
-            # get current experiment but keep kwargs
-            args_e = get_exp(e, args...)
-            iter, args_e = get_iter(args_e...)
-            # bcast model and such
-            args_e = process_args(args_e)
-            res_e = @batchexec pmap(i -> rfunc([subsample(a, i) for a in args_e]...), iter)
-            @async out[e] = fetchreduce(res_e; op=single_reduce!, remote=true, remotereduction......)
-        end
-    end
-    return filter_exp(out, Val(nexp))
-end
-
 
 end # module
