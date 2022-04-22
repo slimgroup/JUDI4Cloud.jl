@@ -1,0 +1,19 @@
+ARG JVER=1.7
+FROM mloubout/julia:$JVER-dev
+
+# Update packages
+RUN julia -e 'using Pkg; Pkg.update();'
+# Remove azure HPC if exists and gc
+RUN julia -e 'using Pkg; Pkg.rm("AzureClusterlessHPC")'
+RUN julia -e 'using Pkg, Dates; Pkg.gc(;collect_delay=Minute(0))'
+# Add Azure HPC and precompile in runtime mode
+RUN julia -e 'using Pkg; ENV["AZ_BATCH_TASK_WORKING_DIR"]="compile"; Pkg.add(url="https://github.com/microsoft/AzureClusterlessHPC.jl")'
+RUN julia -e 'using AzureClusterlessHPC'
+# Add JUDI4Cloud
+RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/slimgroup/JUDFI4Cloud.jl")'
+
+# Install rclone in case needed for IO
+RUN apt update
+RUN apt-get install -y unzip && curl https://rclone.org/install.sh | bash
+RUN rm -rf /var/lib/apt/lists/* \
+        && apt-get clean

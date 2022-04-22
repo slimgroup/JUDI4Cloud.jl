@@ -8,7 +8,7 @@ using AzureClusterlessHPC, Reexport
 export init_culsterless
 
 _njpi = 1
-_default_container = "mloubout/judi-cpu:3.0"
+_default_container = "mloubout/judi4cloud:1.7-dev"
 
 _judi_defaults = Dict("_POOL_ID"                => "JudiPool",
                     "_POOL_VM_SIZE"           => "Standard_E8s_v3",
@@ -66,7 +66,7 @@ Check your azure batch quotas to make sure this is available for you.
 """
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
                           pool_name="JudiPool", verbose=0, nthreads=4,
-                          auto_scale=true, n_julia_per_instance=1,
+                          auto_scale=false, n_julia_per_instance=1,
                           container=_default_container, kw...)
     isnothing(credentials) && throw(InputError("`credentials` must be a valid path to Azure json Credentials"))
     # Check input
@@ -124,16 +124,21 @@ end
 
 
 function __init__()
-    merge!(AzureClusterlessHPC.__params__, _judi_defaults)
-    atexit(finalize_culsterless)
+    # Runtime (on node) doesn't need AzHPC
+    if !haskey(ENV, "AZ_BATCH_TASK_WORKING_DIR")
+        merge!(AzureClusterlessHPC.__params__, _judi_defaults)
+        atexit(finalize_culsterless)
+    end
 end
+
+################################################################################
+#########################  JUDI extension  #####################################
 
 struct AzurePool
     name::String
 end
 
 azurepool() = AzurePool("Batch Pool $(AzureClusterlessHPC.__params__["_POOL_ID"])")
-
 
 judi_reduction_code = quote
     @batchdef function remote_reduction(_x, _y; op=+)
@@ -151,12 +156,11 @@ Runs the function `func` for indices `1:nsrc` within arguments `func(arg_func(i)
 the pool is empty, a standard loop and accumulation is ran. If the pool is a julia WorkerPool or
 any custom Distributed pool, the loop is distributed via `remotecall` followed by are binary tree remote reduction.
 """
-function run_and_reduce(func, pool::AzurePool, nsrc, arg_func::Function)
+function run_and_reduce(func, ::AzurePool, nsrc, arg_func::Function)
     # Make args indexable so that Redwood doesn't copy everything on every worker
-    args_indexable = (arg_func(i) for i=1:nsrc)
+    args_indexable = [arg_func(i) for i=1:nsrc]
     res = eval(:(@batchexec pmap(i -> $(func)($(args_indexable[i])), 1:nsrc)))
-
-    res = fetchreduce(res; remote=true, op=single_reduce!)
+    res = fetchreduce(res; remote=true, reduction_code=judi_reduction_code)
     return res
 end
 
