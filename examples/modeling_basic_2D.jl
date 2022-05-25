@@ -6,8 +6,8 @@
 
 using JUDI4Cloud
 
-creds = "/home/mloubout/research/azure/clusterless_creds.json"
-init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest", verbose=1)
+creds = "/home/mlouboutin3/Research/AzureSlim/clusterless/.credentials"
+init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest2", verbose=1)
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)
 d = (10., 10.)
@@ -59,26 +59,20 @@ f0 = 0.01f0     # kHz
 wavelet = ricker_wavelet(timeS, dtS, f0)
 q = judiVector(srcGeometry, wavelet)
 
-# Set up info structure for linear operators
-ntComp = get_computational_nt(srcGeometry, recGeometry, model)
-info = Info(prod(n), nsrc, ntComp)
-
 ###################################################################################################
 
 # Write shots as segy files to disk
 opt = JUDI.Options(optimal_checkpointing=false, isic=false, subsampling_factor=2, dt_comp=1.0)
 
 # Setup operators
-Pr = judiProjection(info, recGeometry)
-F = judiModeling(info, model; options=opt)
-F0 = judiModeling(info, model0; options=opt)
-Ps = judiProjection(info, srcGeometry)
-J = judiJacobian(Pr*F0*adjoint(Ps), q)
+F = judiModeling(model, srcGeometry, recGeometry; options=opt)
+F0 = judiModeling(model0, srcGeometry, recGeometry; options=opt)
+J = judiJacobian(F0, q)
 
 # Nonlinear modeling
-dobs = Pr*F*adjoint(Ps)*q
+dobs = F*q
 # # Adjoint
-qad = Ps*adjoint(F)*adjoint(Pr)*dobs
+qad = F'*dobs
 
 # Linearized modeling
 dD = J*dm
