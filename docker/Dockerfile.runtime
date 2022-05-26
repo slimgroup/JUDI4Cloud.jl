@@ -10,7 +10,7 @@ RUN julia -e 'using Pkg, Dates; Pkg.gc(;collect_delay=Minute(0))'
 RUN julia -e 'using Pkg; ENV["AZ_BATCH_TASK_WORKING_DIR"]="compile"; Pkg.add(url="https://github.com/microsoft/AzureClusterlessHPC.jl")'
 RUN julia -e 'using AzureClusterlessHPC'
 # Add JUDI4Cloud
-RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/slimgroup/JUDI4Cloud.jl", rev="judi3")'
+RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/slimgroup/JUDI4Cloud.jl")'
 
 # Install rclone in case needed for IO
 RUN apt update
