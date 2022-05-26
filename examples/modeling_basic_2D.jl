@@ -6,7 +6,8 @@
 
 using JUDI4Cloud
 
-creds = "/home/mlouboutin3/Research/AzureSlim/clusterless/.credentials"
+# creds = "/home/mlouboutin3/Research/AzureSlim/clusterless/.credentials"
+creds = "/Users/mathiaslouboutin/.azure/creds.json"
 init_culsterless(2; credentials=creds, vm_size="Standard_E2s_v3", pool_name="PoolTest2", verbose=1)
 # Set up model structure
 n = (120, 100)   # (x,y,z) or (x,z)

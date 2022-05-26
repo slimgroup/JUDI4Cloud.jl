@@ -36,6 +36,14 @@ end
 
 azurepool() = AzurePool("Batch Pool $(AzureClusterlessHPC.__params__["_POOL_ID"])")
 
+function set_env_vars(gpu::Bool)
+    if gpu
+        ENV["DRVITO_ARCH"] = "nvc"
+        ENV["DRVITO_PLATFORM"] = "nvidiaX"
+        ENV["DRVITO_LANGUAGE"] = "openacc"
+    end
+end
+
 judi_reduction_code = quote
     @batchdef function remote_reduction(_x, _y; op=+)
         x = fetch(_x)
@@ -45,9 +53,10 @@ judi_reduction_code = quote
     end
 end
 
-remote_func_code = quote
-  @batchdef function judifunc(func, args)
-      argout = func(args)
+remote_func_code(gpu::Bool) = quote
+  @batchdef function judifunc(func::Function, args)
+      set_env_vars($(gpu))
+      argout = func(args...)
       return argout
   end
 end
@@ -85,10 +94,15 @@ Check your azure batch quotas to make sure this is available for you.
 * `n_julia_per_instance`: Number of julia worker per node (Default 1). If >1, julia will start a mini distributed setup on each node based on the number of source.
 """
 function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s_v3",
-                          pool_name="JudiPool", verbose=0, nthreads=4,
+                          pool_name="JudiPool", verbose=0, nthreads=4, gpu=false,
                           auto_scale=false, n_julia_per_instance=1,
                           container=_default_container, kw...)
     isnothing(credentials) && throw(InputError("`credentials` must be a valid path to Azure json Credentials"))
+    # Check VM type
+    if gpu && !any(startswith.(split(_POOL_VM_SIZE, "_")[2], ["NV", "ND", "NC"]))
+        @warn "GPU propagation requested on a CPU instance,m disabling gpu. Chose one of NV/NC/ND instance for GPU acceleration"
+        gpu = false
+    end
     # Check input
     blob_name = lowercase("$(pool_name)tmp")
     # Update verbosity and parameters
@@ -117,7 +131,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global _njpi = isnothing(n_julia_per_instance) ? 1 : n_julia_per_instance
     # Define number of local julia worker on each node in batch
     eval(macroexpand(JUDI4Cloud, quote @batchdef _nproc_loc = $_njpi end))
-    eval(macroexpand(JUDI4Cloud, remote_func_code))
+    eval(macroexpand(JUDI4Cloud, remote_func_code($gpu)))
     
     @eval(JUDI, _worker_pool() = $(azurepool)())
 end

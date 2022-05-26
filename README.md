@@ -1,8 +1,6 @@
 # JUDI4Cloud.jl
 
-This package implements serverless parallelism on Azure (Azure batch) for [JUDI](https://github.com/slimgroup/JUDI.jl) using [AzureClusterlessHPC](https://github.com/microsoft/AzureClusterlessHPC.jl). 
-
-Using this package overwrite the task parallelism in [JUDI](https://github.com/slimgroup/JUDI.jl) and will therefore throw the corresponding warnings. These warnings can be safely ignored, however, `JUDI` and `JUDI4Cloud` should not be used together. The current implementation doesn't allow to switch between Azure and conventional parallelism, it is left to the user to know which resources they will use.
+This package implements serverless parallelism on Azure (Azure batch) for [JUDI] using [AzureClusterlessHPC]. 
 
 ## Installation
 
@@ -12,14 +10,20 @@ To install this package simply run the standard command
 ] add https://github.com/slimgroup/JUDI4Cloud.jl
 ```
 
-***Note*** The default docker container used is based on `julia v1.6`. Since the communcation with Azure Blob is done through Serialization, it is highly recommended to use the same version of julia locally. If you use the default container, use `Julia v1.6`, and if you use you own container make sure to have compatible Julia versions.
+***Note*** The default docker container used is based on `julia v1.7`. Since the communication with Azure Blob is done through Serialization, it is **mandatory** to use the same version of Julia locally. If you use the default container, use `Julia v1.7`, and if you use your own container make sure to have compatible Julia versions.
+
+## Remote container
+
+Following [AzureClusterlessHPC] convention, we rely on a remote runtime docker container with all the necessary packages installed and the runtime version of [AzureClusterlessHPC] installed. For convenience, we provide a docker container with the latest version of [AzureClusterlessHPC], [JUDI4Cloud] and [JUDI] installed for Julia `1.6` or `1.7`. These images are named `mloubout/judi4cloud:1.6` and `mloubout/judi4cloud:1.7`. This image contains additional SLIM packages as well such as `SegyIO` if the user were to need it.
+
+Additionally, these two premade images provide the Nvidia HPC SDK to enable GPU accceleration of the propagators. You can therefore use GPU instances as well. Enabling GPU can be done by specifying `gpu=true` when initializing the batch pool.
 
 
 ## Usage
 
-To use this package, simply replace `using JUDI` by `using JUDI4Cloud` at the top of your script. All JUDI functionnalities are reexported to make your script compatible.
+To use this package, simply replace `using JUDI` by `using JUDI4Cloud` at the top of your script. All JUDI functionalities are reexported to make your script compatible.
 
-Once `JUDI4Cloud` is imported, you can use its main functionnality to start an Azure batch pool to use as your serverless remote taks farm. To start a batch pool with `2` nodes and `4` threads per node run:
+Once `JUDI4Cloud` is imported, you can use its main functionality to start an Azure batch pool to use as your serverless remote task farm. To start a batch pool with `2` nodes and `4` threads per node run:
 
 ```julia
 nworkers = 2
@@ -32,6 +36,7 @@ where:
 - `pool_name`  is the of the batch pool of nodes
 - `verbose` controls [AzureClusterlessHPC](https://github.com/microsoft/AzureClusterlessHPC.jl)'s verbosity
 - `nthreads` defines the number of OpenMP threads to use on each node
+- `gpu` whether to use (Nvidia) gpu for the propagators via openacc. You will need to specify a GPU VM.
 
 ## Examples
 
@@ -41,13 +46,16 @@ A simple example is available at [examples/modeling_basic_2D.jl](https://github.
 
 The following extensions are currently in development:
 
-- GPU support. [JUDI](https://github.com/slimgroup/JUDI.jl) support's GPU offloading through [Devito](https://github.com/devitocodes/devito) and VM/Image/container support is beeing added
-- More flexibility allowing to switch between conventional Julia parallelism and Azure
-- Some functionalities are not supported yet (Extended source, TWRI), these will be added as well.
-
+- Parallel Julia on each node.
+- More flexibility to switch between conventional Julia parallelism and Azure
+- Out of core judiVector with Blob storage
 
 # Author
 
-This software is develloped as Georgia Institute of Technology as part of the ML4Seismic consortium. For questions or issues, please open an issue on github or contact the author:
+This software is developed at Georgia Institute of Technology as part of the ML4Seismic consortium. For questions or issues, please open an issue on GitHub or contact the author:
 
 - Mathias Louboutin: mlouboutin3@gatech.edu
+
+
+[AzureClusterlessHPC]:https://github.com/microsoft/AzureClusterlessHPC.jl
+[JUDI]:https://github.com/slimgroup/JUDI.jl
