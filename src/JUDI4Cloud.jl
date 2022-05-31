@@ -131,7 +131,7 @@ function init_culsterless(nworkers=2; credentials=nothing, vm_size="Standard_E8s
     global _njpi = isnothing(n_julia_per_instance) ? 1 : n_julia_per_instance
     # Define number of local julia worker on each node in batch
     eval(macroexpand(JUDI4Cloud, quote @batchdef _nproc_loc = $_njpi end))
-    eval(macroexpand(JUDI4Cloud, remote_func_code($gpu)))
+    eval(macroexpand(JUDI4Cloud, remote_func_code(gpu)))
     
     @eval(JUDI, _worker_pool() = $(azurepool)())
 end
